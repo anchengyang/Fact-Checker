@@ -2,6 +2,10 @@
 
 This project implements a text classification system using various Natural Language Processing (NLP) techniques and machine learning models. The system combines traditional TF-IDF features with advanced linguistic features extracted using spaCy to improve classification performance.
 
+## Data source
+https://www.kaggle.com/competitions/cs-4248-fact-checking-2420/overview
+
+
 ## Project Structure
 
 ```
