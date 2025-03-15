@@ -1,12 +1,23 @@
-#!/usr/bin/env python.
+#!/usr/bin/env python
 
 """
-CS4248 ASSIGNMENT 2 Template
+CS4248 Assignment 2: Text Classification with Advanced NLP Features
 
-TODO: Modify the variables below.  Add sufficient documentation to cross
-reference your code with your writeup.
+This script implements a text classification system that combines traditional TF-IDF features
+with advanced linguistic features extracted using spaCy. The system uses a custom feature
+extractor (EnhancedNLPFeatureExtractor) that extracts various linguistic features including:
+- Syntactic features (POS tags, sentence structure)
+- Named entity features
+- Dependency parsing features
+- Semantic features
 
+The features are combined using scikit-learn's FeatureUnion and fed into a LightGBM classifier.
+The system also handles class imbalance using SMOTE oversampling.
+
+Author: AnChengYang (E0725272)
 """
+
+# Required package installation
 # pip install numpy pandas spacy lightgbm scikit-learn imbalanced-learn && python -m spacy download en_core_web_md
 
 # Standard library imports
@@ -38,12 +49,34 @@ _STUDENT_NUM = 'E0725272'
 nlp = spacy.load("en_core_web_md")
 
 class EnhancedNLPFeatureExtractor(BaseEstimator, TransformerMixin):
+    """
+    A custom scikit-learn transformer that extracts advanced linguistic features from text.
+    
+    This transformer combines multiple types of NLP features:
+    1. Syntactic features: POS distributions, sentence metrics, etc.
+    2. Named entity features: Entity distributions and metrics
+    3. Dependency features: Parse tree analysis
+    4. Semantic features: Vector-based similarity and cohesion metrics
+    
+    The transformer follows scikit-learn's transformer interface with fit() and transform() methods.
+    """
+    
     def __init__(self):
+        """Initialize the feature extractor with empty entity and dependency type storage."""
         self.entity_types = None  # Store entity types seen in training
         self.dependency_types = None  # Store dependency types
         
     def fit(self, X, y=None):
-        """Collects all entity types and dependency labels present in the training data."""
+        """
+        Collect all unique entity types and dependency labels from the training data.
+        
+        Args:
+            X: List of text documents
+            y: Target labels (not used)
+            
+        Returns:
+            self: The fitted transformer
+        """
         entity_types_set = set()
         dependency_types_set = set()
         
@@ -62,7 +95,16 @@ class EnhancedNLPFeatureExtractor(BaseEstimator, TransformerMixin):
         return self
     
     def transform(self, X, y=None):
-        """Extracts all NLP features."""
+        """
+        Extract all NLP features from the input texts.
+        
+        Args:
+            X: List of text documents
+            y: Target labels (not used)
+            
+        Returns:
+            numpy.ndarray: Combined feature matrix
+        """
         syntactic_features = self._extract_syntactic_features(X)
         entity_features = self._extract_entity_features(X)
         dependency_features = self._extract_dependency_features(X)
@@ -79,7 +121,21 @@ class EnhancedNLPFeatureExtractor(BaseEstimator, TransformerMixin):
         return all_features
     
     def _extract_syntactic_features(self, X):
-        """Extract syntactic features from texts."""
+        """
+        Extract syntactic features from texts.
+        
+        Features include:
+        - Sentence length and count
+        - POS tag distributions
+        - Punctuation and stopword statistics
+        - Token length statistics
+        
+        Args:
+            X: List of text documents
+            
+        Returns:
+            numpy.ndarray: Matrix of syntactic features
+        """
         features = []
         for text in X:
             doc = nlp(text)
@@ -127,7 +183,20 @@ class EnhancedNLPFeatureExtractor(BaseEstimator, TransformerMixin):
         return np.array(features)
     
     def _extract_entity_features(self, X):
-        """Extract named entity features from texts."""
+        """
+        Extract named entity features from texts.
+        
+        Features include:
+        - Entity type distributions
+        - Entity density
+        - Entity length statistics
+        
+        Args:
+            X: List of text documents
+            
+        Returns:
+            numpy.ndarray: Matrix of entity features
+        """
         features = []
         entity_types_list = self.entity_types or []  # Use stored entity types
         
@@ -161,7 +230,20 @@ class EnhancedNLPFeatureExtractor(BaseEstimator, TransformerMixin):
         return np.array(features)
     
     def _extract_dependency_features(self, X):
-        """Extract dependency parsing features from texts."""
+        """
+        Extract dependency parsing features from texts.
+        
+        Features include:
+        - Dependency type distributions
+        - Tree complexity metrics
+        - Parse tree depth
+        
+        Args:
+            X: List of text documents
+            
+        Returns:
+            numpy.ndarray: Matrix of dependency features
+        """
         features = []
         dependency_types_list = self.dependency_types or []
         
@@ -193,7 +275,15 @@ class EnhancedNLPFeatureExtractor(BaseEstimator, TransformerMixin):
         return np.array(features)
     
     def _find_max_tree_depth(self, doc):
-        """Calculate the maximum depth of the dependency tree."""
+        """
+        Calculate the maximum depth of the dependency parse tree.
+        
+        Args:
+            doc: spaCy Doc object
+            
+        Returns:
+            int: Maximum depth of the dependency tree
+        """
         if not doc:
             return 0
             
@@ -209,7 +299,20 @@ class EnhancedNLPFeatureExtractor(BaseEstimator, TransformerMixin):
         return max(get_depth(root) for root in roots)
     
     def _extract_semantic_features(self, X):
-        """Extract semantic features from the text."""
+        """
+        Extract semantic features from texts.
+        
+        Features include:
+        - Vector statistics
+        - Token similarity metrics
+        - Lexical cohesion measures
+        
+        Args:
+            X: List of text documents
+            
+        Returns:
+            numpy.ndarray: Matrix of semantic features
+        """
         features = []
         
         for text in X:
@@ -249,7 +352,17 @@ combined_features = FeatureUnion([
 ])
 
 def train_model(model, X_train, y_train):
-    ''' TODO: train your model based on the training data '''
+    """
+    Train the model with the given training data.
+    
+    Args:
+        model: The machine learning model to train
+        X_train: Training features
+        y_train: Training labels
+        
+    Returns:
+        The trained model
+    """
     print("extracting features...")
     # create features
     X_train_combined_features = combined_features.fit_transform(X_train)
@@ -265,17 +378,44 @@ def train_model(model, X_train, y_train):
 
 
 def predict(model, X_test):
+    """
+    Generate predictions using the trained model.
+    
+    Args:
+        model: Trained model
+        X_test: Test features
+        
+    Returns:
+        numpy.ndarray: Predicted labels
+    """
     print("predicting...")
     predictions = model.predict(X_test)
     return predictions - 1
 
 def generate_result(test, y_pred, filename):
-    ''' generate csv file base on the y_pred '''
+    """
+    Generate and save prediction results to a CSV file.
+    
+    Args:
+        test: Test data DataFrame
+        y_pred: Predicted labels
+        filename: Output filename
+    """
     test['Verdict'] = pd.Series(y_pred)
     test.drop(columns=['Text'], inplace=True)
     test.to_csv(filename, index=False)
 
 def main():
+    """
+    Main execution function that orchestrates the text classification pipeline.
+    
+    Steps:
+    1. Load and preprocess data
+    2. Extract features
+    3. Train model
+    4. Generate predictions
+    5. Save results
+    """
     ''' load train, val, and test data '''
     train = pd.read_csv('data/train.csv')
     X = train['Text']
